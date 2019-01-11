@@ -4,6 +4,7 @@ var app = require('express')(),
 var socket = require('socket.io-client')('http://10.10.20.70:8080');
 const fs = require('fs');
 const ent = require('ent');
+const sanitize = require('mongo-sanitize');
 const MongoClient = require('mongodb').MongoClient;
 
 
@@ -62,7 +63,7 @@ socket.on('message', function(data) {
 	var maRecherche = dataGestion.sentenceToArrayBit(myReseau.words, data.message, nbIn);
 
 	// Insérer le dernier message dans la base pour agrandir les connaissances de l'IA
-	if(!isNaN(data.message)) {
+	if(!isNaN(data.message) && data.message > 0 && data.message < dataIntent["intents"].length) {
 		client.connect((err, client) => {
 			if(err) throw err;
 			var db = client.db('ia');
@@ -75,7 +76,7 @@ socket.on('message', function(data) {
 						"tag": dataIntent["intents"][parseInt(data.message) - 1].tag 
 					},
 					{
-						"$push": { "patterns": ent.decode(lastMessage) }
+						"$push": { "patterns": sanitize(ent.decode(lastMessage)) }
 					}, (err, result) => {
 						if(err) throw err;
 						console.log('document updated');

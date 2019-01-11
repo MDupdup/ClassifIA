@@ -25,7 +25,7 @@ io.sockets.on('connection', function (socket, pseudo) {
 
     
     // MongoDB
-    const client = new MongoClient('mongodb://127.0.0.1:27017');
+    const client = new MongoClient('mongodb://10.10.20.70:27017');
 
     client.connect((err, client) => {
         if(err) throw err;

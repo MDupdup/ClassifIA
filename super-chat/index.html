@@ -50,7 +50,6 @@
             socket.on('list_tags', function(list) {
                 $('#tag_list').empty();
                 list.forEach(e => {
-                    console.log(e);
                     $('#tag_list').append('<li>' + e.tag + '</li>')
                 });
             });
