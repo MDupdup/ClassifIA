@@ -7,23 +7,17 @@ const ent = require('ent');
 const sanitize = require('mongo-sanitize');
 const MongoClient = require('mongodb').MongoClient;
 
-
-//console.log("Debut");
-
-//var cheminVersProjet = "C:/Users/nicol/Desktop/Nouveau dossier/learningTextClassifIA/chatbot neural n/";
-// E:/Users/nicolas.vivion/Desktop/neuralnetwork_js/chatbot neural n/
-var cheminVersProjet = "E:/Innovation/IA/learningTextClassifIA/chatbot neural n/";
 var nbIn = 250;
 var nbHidden = 5;
 
 
-var	dataGestion = require('./dataGestion');
-var neuralNetwork = require('./neuralNetwork');
+var	dataGestion = require('./neuralnetwork/dataGestion');
+var neuralNetwork = require('./neuralnetwork/neuralNetwork');
 var mongo = require('./mongo');
 
 
 
-var dataIntent; //= JSON.parse(fs.readFileSync(cheminVersProjet+'data.json', 'utf8'));
+var dataIntent;
 
 const client = new MongoClient('mongodb://10.10.20.80:27017');
 
@@ -54,7 +48,7 @@ socket.on('updateNN', function (update) {
 	if(update) apprentissage(dataIntent);
 });
 
-var myReseau = JSON.parse(fs.readFileSync(cheminVersProjet+'rnPractice.json', 'utf8'));
+var myReseau = JSON.parse(fs.readFileSync(__dirname+'/neuralnetwork/rnPractice.json', 'utf8'));
 
 var lastMessage;
 
