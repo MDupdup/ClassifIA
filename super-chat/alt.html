@@ -1,0 +1,305 @@
+<html>
+<head>
+
+<link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.css" type="text/css" rel="stylesheet"/>
+<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css" integrity="sha384-Gn5384xqQ1aoWXA+058RXPxPg6fy4IWvTNh0E263XmFcJlSAwiGgFAW/dAiS6JXm" crossorigin="anonymous">
+<script src="https://code.jquery.com/jquery-3.2.1.slim.min.js" integrity="sha384-KJ3o2DKtIkvYIK3UENzmM7KCkRr/rE9/Qpg6aAZGJwFDMVNA/GpGFF93hXpG5KkN" crossorigin="anonymous"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/popper.js/1.12.9/umd/popper.min.js" integrity="sha384-ApNbgh9B+Y1QKtv3Rn7W3mgPxhU9K/ScQsAP7hUibX39j7fakFPskvXusvfa0b4Q" crossorigin="anonymous"></script>
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/js/bootstrap.min.js" integrity="sha384-JZR6Spejh4U02d8jOt6vLEHfe/JQGiRRSQQxSfFWpi1MquVdAyjUar5+76PVCmYl" crossorigin="anonymous"></script>
+</head>
+<body>
+<div id="inputDiv" class="input-group mb-3">
+    <div class="input-group-prepend">
+        <span class="input-group-text" id="inputGroup-sizing-default">Nom</span>
+    </div>
+    <input id="nickname" type="text" class="form-control" aria-label="Sizing example input" aria-describedby="inputGroup-sizing-default">
+</div>
+<button id="nickBtn" send style="display: none;"></button>
+<div id="container" class="container" style="display: none;">
+<h3 class=" text-center">Bienvenue sur MSN !</h3>
+<div class="messaging">
+      <div class="inbox_msg">
+        <div class="inbox_people">
+            <div class="headind_srch">
+                <div class="recent_heading">
+                    <h4 id="userName">Messages</h4>
+                </div>
+            </div>
+            <div id="chatItem" class="inbox_chat">
+                <div class="chat_list active_chat">
+                    <div class="chat_people">
+                        <div class="chat_img"> <img src="https://ptetutorials.com/images/user-profile.png" alt="sunil">
+                        </div>
+                        <div class="chat_ib">
+                            <h5>Chat All <span id="chatAllDate" class="chat_date">Dec 25</span></h5>
+                            <p id="chatAll"></p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="allMessagesConv" class="mesgs">
+            <div id="messagesDiv" class="msg_history">
+            </div>
+            <div class="type_msg">
+                <div class="input_msg_write">
+                    <input type="text" id="messageInput" class="write_msg" placeholder="Type a message" />
+                    <button id="submitBtn" send class="msg_send_btn"><i class="fa fa-paper-plane-o" aria-hidden="true"></i></button>
+                </div>
+            </div>
+        </div>
+      </div>
+    </div></div>
+    </body>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        var color = '#' + (Math.random()*0xFFFFFF<<0).toString(16);
+    
+        var messagesDiv = document.getElementById('messagesDiv');
+        var submitBtn = document.getElementById('submitBtn');
+        var messageInput = document.getElementById('messageInput');
+        var nickname = document.getElementById('nickname');
+        var nickBtn = document.getElementById('nickBtn');
+        var chatItem = document.getElementById('chatItem');
+        var container = document.getElementById('container');
+        var inputDiv = document.getElementById('inputDiv');
+        var allMessagesDivs = document.getElementById('allMessagesConv');
+        var date = new Date();
+        localUsers = {};
+        nickname.focus();
+              
+        nickname.addEventListener('keyup', (event) => {
+            event.preventDefault();
+            if(event.keyCode === 13)
+            {
+                nickBtn.click();
+                inputDiv.style.display = 'none';
+                container.style.display = 'block';
+                messageInput.focus();
+                console.log(socket.id + nickname.value);
+                socket.emit('username', nickname.value);
+            }
+        });
+    
+        messageInput.addEventListener('keyup', (event) => {
+            event.preventDefault();
+            event.keyCode === 13 ? submitBtn.click() : '';
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        });
+    
+        var socket = io();
+    
+        var senderID = null;
+        submitBtn.addEventListener('click', () => {
+            console.log('send to ', senderID);
+            socket.emit('message', { color: color, id: socket.id, nick: nickname.value, message: messageInput.value, sender: senderID });
+            //messagesDiv.innerHTML += '<div class="outgoing_msg"><div class="sent_msg"><h6>' + nickname.value + '</h6><p style="background-color: ' + color + ';">' + messageInput.value + '</p><span class="time_date">' + date.getHours() + ':' + date.getMinutes() + '</span></div></div>';;
+            if(senderID != null)
+            {
+                messagesDiv.innerHTML += '<div class="outgoing_msg"><div class="sent_msg"><h6><i>' + nickname.value + '(chuchote à ' + localUsers[senderID] + ')</i></h6><p style="background-color: ' + color + ';"><i>' + messageInput.value + '</i></p><span class="time_date">' + date.getHours() + ':' + date.getMinutes() + '</span></div></div>';
+            }
+            else
+            {
+                messagesDiv.innerHTML += '<div class="outgoing_msg"><div class="sent_msg"><h6>' + nickname.value + '</h6><p style="background-color: ' + color + ';"><i>' + messageInput.value + '</i></p><span class="time_date">' + date.getHours() + ':' + date.getMinutes() + '</span></div></div>';
+            }
+            messageInput.value = '';
+            senderID = null;
+        });
+    
+        
+        socket.on('message', data => {
+            console.log('message received: ', data);
+            date = new Date();
+            console.log('merde', senderID);
+            if(data.sender != null)
+            {
+                var incomingMessage = '<div class="incoming_msg"><div class="received_msg"><div class="received_withd_msg"><h6><i>' + data.nick + ' vous chuchote</i></h6><p style="background-color: ' + data.color + '; color: #FFF;">' + data.message + '</p><span class="time_date">' + date.getHours() + ':' + date.getMinutes() + '</span></div></div></div>';
+                var outcomingMessage = '<div class="outgoing_msg"><div class="sent_msg"><h6><i>' + nickname.value + '(chuchote à ' + localUsers[senderID] + ')</i></h6><p style="background-color: ' + color + ';"><i>' + messageInput.value + '</i></p><span class="time_date">' + date.getHours() + ':' + date.getMinutes() + '</span></div></div>';
+            }
+            else
+            {
+                var incomingMessage = '<div class="incoming_msg"><div class="received_msg"><div class="received_withd_msg"><h6>' + data.nick + '</h6><p style="background-color: ' + data.color + '; color: #FFF;"><i>' + data.message + '</i></p><span class="time_date">' + date.getHours() + ':' + date.getMinutes() + '</span></div></div></div>';
+                var outcomingMessage = '<div class="outgoing_msg"><div class="sent_msg"><h6>' + nickname.value + '</h6><p style="background-color: ' + color + ';"><i>' + messageInput.value + '</i></p><span class="time_date">' + date.getHours() + ':' + date.getMinutes() + '</span></div></div>';
+            }
+            if(socket.id !== data.id)
+            {
+                messagesDiv.innerHTML += incomingMessage;
+            }
+            else{
+                messagesDiv.innerHTML += outcomingMessage;
+            }
+        });
+        socket.on('users', users => {
+            document.getElementById('userName').innerHTML = 'Bienvenue ' + users[socket.id]; 
+            chatItem.innerHTML = '<div id="chatItemAll" class="chat_list active_chat"><div class="chat_people"><div class="chat_img"> <img src="https://ptetutorials.com/images/user-profile.png" alt="sunil"></div><div class="chat_ib"><h5>Chat All <span id="chatAllDate" class="chat_date">Dec 25</span></h5><p id="chatAll"></p></div></div></div>';
+            localUsers = users;
+            console.log("userlist: ",users.allUsers);
+            Object.keys(users).forEach((userId) => {
+                if(userId !== socket.id) 
+                {
+                    var lol = '<div class="chat_list" socketid="' + userId + '"><div class="chat_people"><div class="chat_img"> <img src="https://ptetutorials.com/images/user-profile.png" alt="sunil"></div><div class="chat_ib"><h5>' +  users[userId] + ' <span id="chatDate" class="chat_date">Dec 25</span></h5><p id="chatAll"></p></div></div></div>';
+                    chatItem.innerHTML += lol;
+                    //senderID = userId;
+                }
+            });
+            [].forEach.call(document.querySelectorAll('div.chat_list'), function(el) {
+                el.addEventListener('click', () => {
+                    
+                    [].forEach.call(document.querySelectorAll('div.active_chat'), function(elem) {
+                        elem.classList.remove('active_chat');
+                    });
+                    el.classList.add('active_chat');
+                    
+                    console.log("sockt ", el.getAttribute('socketId'));
+                    senderID = el.getAttribute('socketId');
+                    pvMessagesDiv = '<div class="msg_history" socketid="' + el.getAttribute('socketId') + '"></div>';
+                    console.log('ok');
+                });
+            });
+        });
+        socket.emit('loaded', 'page loaded!!');
+    </script>
+
+    </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<style>
+.container{max-width:1170px; margin:auto;}
+img{ max-width:100%;}
+.inbox_people {
+  background: #f8f8f8 none repeat scroll 0 0;
+  float: left;
+  overflow: hidden;
+  width: 40%; border-right:1px solid #c4c4c4;
+}
+.inbox_msg {
+  border: 1px solid #c4c4c4;
+  clear: both;
+  overflow: hidden;
+}
+.top_spac{ margin: 20px 0 0;}
+.recent_heading {float: left; width:40%;}
+.srch_bar {
+  display: inline-block;
+  text-align: right;
+  width: 60%;
+}
+.headind_srch{ padding:10px 29px 10px 20px; overflow:hidden; border-bottom:1px solid #c4c4c4;}
+.recent_heading h4 {
+  color: #05728f;
+  font-size: 21px;
+  margin: auto;
+}
+.srch_bar input{ border:1px solid #cdcdcd; border-width:0 0 1px 0; width:80%; padding:2px 0 4px 6px; background:none;}
+.srch_bar .input-group-addon button {
+  background: rgba(0, 0, 0, 0) none repeat scroll 0 0;
+  border: medium none;
+  padding: 0;
+  color: #707070;
+  font-size: 18px;
+}
+.srch_bar .input-group-addon { margin: 0 0 0 -27px;}
+.chat_ib h5{ font-size:15px; color:#464646; margin:0 0 8px 0;}
+.chat_ib h5 span{ font-size:13px; float:right;}
+.chat_ib p{ font-size:14px; color:#989898; margin:auto}
+.chat_img {
+  float: left;
+  width: 11%;
+}
+.chat_ib {
+  float: left;
+  padding: 0 0 0 15px;
+  width: 88%;
+}
+.chat_people{ overflow:hidden; clear:both;}
+.chat_list {
+  border-bottom: 1px solid #c4c4c4;
+  margin: 0;
+  padding: 18px 16px 10px;
+}
+.inbox_chat { height: 550px; overflow-y: scroll;}
+.active_chat{ background:#ebebeb;}
+.incoming_msg_img {
+  display: inline-block;
+  width: 6%;
+}
+.received_msg {
+  display: inline-block;
+  padding: 0 0 0 10px;
+  vertical-align: top;
+  width: 92%;
+ }
+ .received_withd_msg p {
+  background: #ebebeb none repeat scroll 0 0;
+  border-radius: 3px;
+  color: #646464;
+  font-size: 14px;
+  margin: 0;
+  padding: 5px 10px 5px 12px;
+  width: 100%;
+}
+.time_date {
+  color: #747474;
+  display: block;
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+.received_withd_msg { width: 57%;}
+.mesgs {
+  float: left;
+  padding: 30px 15px 0 25px;
+  width: 60%;
+}
+ .sent_msg p {
+  background: #05728f none repeat scroll 0 0;
+  border-radius: 3px;
+  font-size: 14px;
+  margin: 0; color:#fff;
+  padding: 5px 10px 5px 12px;
+  width:100%;
+}
+.outgoing_msg{ overflow:hidden; margin:26px 0 26px;}
+.sent_msg {
+  float: right;
+  width: 46%;
+}
+.input_msg_write input {
+  background: rgba(0, 0, 0, 0) none repeat scroll 0 0;
+  border: medium none;
+  color: #4c4c4c;
+  font-size: 15px;
+  min-height: 48px;
+  width: 100%;
+}
+.type_msg {border-top: 1px solid #c4c4c4;position: relative;}
+.msg_send_btn {
+  background: #05728f none repeat scroll 0 0;
+  border: medium none;
+  border-radius: 50%;
+  color: #fff;
+  cursor: pointer;
+  font-size: 17px;
+  height: 33px;
+  position: absolute;
+  right: 0;
+  top: 11px;
+  width: 33px;
+}
+.messaging { padding: 0 0 50px 0;}
+.msg_history {
+  height: 516px;
+  overflow-y: auto;
+}
+</style>

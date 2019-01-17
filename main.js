@@ -1,7 +1,7 @@
 var app = require('express')(),
     server = require('http').createServer(app);
 
-var socket = require('socket.io-client')('http://10.10.20.70:8080');
+var socket = require('socket.io-client')('http://10.10.20.80:8080');
 const fs = require('fs');
 const ent = require('ent');
 const sanitize = require('mongo-sanitize');
@@ -19,12 +19,13 @@ var nbHidden = 5;
 
 var	dataGestion = require('./dataGestion');
 var neuralNetwork = require('./neuralNetwork');
+var mongo = require('./mongo');
 
 
 
 var dataIntent; //= JSON.parse(fs.readFileSync(cheminVersProjet+'data.json', 'utf8'));
 
-const client = new MongoClient('mongodb://10.10.20.70:27017');
+const client = new MongoClient('mongodb://10.10.20.80:27017');
 
 client.connect((err, client) => {
 	if(err) throw err;
@@ -59,40 +60,37 @@ var lastMessage;
 
 socket.on('message', function(data) {
 
-	console.log("here")
+	console.log("here");
 	var maRecherche = dataGestion.sentenceToArrayBit(myReseau.words, data.message, nbIn);
 
 	// Insérer le dernier message dans la base pour agrandir les connaissances de l'IA
-	if(!isNaN(data.message) && data.message > 0 && data.message < dataIntent["intents"].length) {
-		client.connect((err, client) => {
-			if(err) throw err;
-			var db = client.db('ia');
-			
-			db.collection('data').findOne({ "tag": dataIntent["intents"][parseInt(data.message) - 1].tag, "patterns": lastMessage }, (err, result) => {
-				if(err) throw err;
-				if(result === null) {
-					db.collection('data').updateOne(
-					{ 
-						"tag": dataIntent["intents"][parseInt(data.message) - 1].tag 
-					},
-					{
-						"$push": { "patterns": sanitize(ent.decode(lastMessage)) }
-					}, (err, result) => {
-						if(err) throw err;
-						console.log('document updated');
-					});
-				}
-			});
-		});
-		var message = "Merci pour votre retour !";
-	} else {
+	if(!isNaN(data.message) && data.message > 0 && data.message < dataIntent["intents"].length) var message = insertIntoDB(data.message, lastMessage);
+	// Insérer une nouvelle question dans la base
+	else if(!isNaN(data.message.split('')[0]) && data.message.split('')[1] === 'q')	var message = insertIntoDB(data.message, lastMessage, true);
+	/*else if(data.message.split('^')[0] === 'y') {
+		socket.emit("youtube request", data.message.substring(1, data.message.length));
+		var message = "Bien sûr, voici la vidéo " + data.message.substring(1, data.message.length);
+	}*/
+	// Répondre à la question de l'utilisateur
+	else {
 		var message = neuralNetwork.response(myReseau.perceptron_after_learn, maRecherche, dataIntent);
 		lastMessage = data.message;
 	}
 
-	// Ajouter des données personnalisées
-	if(message.includes('^')) {
-		var code = message.split('^')[1];
+	socket.emit('message', formatResponse(message, data));
+})
+
+console.log("ok");
+server.listen(3000);
+
+
+
+
+
+// Ajouter des données personnalisées
+function formatResponse(originalMessage, data, escapeChar = '^') {
+	if(originalMessage.includes(escapeChar)) {
+		var code = originalMessage.split(escapeChar)[1];
 		var replaceValue = "";
 
 		switch(code) {
@@ -109,16 +107,42 @@ socket.on('message', function(data) {
 			default:
 				replaceValue = "??";
 		}
-		message = message.replace('^'+code+'^', replaceValue);
+		return originalMessage.replace(escapeChar+code+escapeChar, replaceValue);
 	}
-	socket.emit('message', message);
-})
+	return originalMessage;
+}
 
-console.log("ok")
-server.listen(3000);
+// Insérer des Réponses/Questions dans la base MongoDB de l'IA (sa "mémoire")
+function insertIntoDB(choice, message, isQuestion = false) {
+	client.connect((err, client) => {
+		if(err) throw err;
+		var db = client.db('ia');
+		
+		var query = { "tag": dataIntent["intents"][parseInt(choice) - 1].tag };
+		query[isQuestion ? "responses" : "patterns"] = sanitize(ent.decode(message));
 
+		var insert = {};
+		insert[isQuestion ? "responses" : "patterns"] = sanitize(ent.decode(message));
+		
+		db.collection('data').findOne(query, (err, result) => {
+			if(err) throw err;
+			if(result === null) {
+				db.collection('data').updateOne(
+				{ 
+					"tag": dataIntent["intents"][parseInt(choice) - 1].tag 
+				},
+				{
+					"$push": insert
+				}, (err, result) => {
+					if(err) throw err;
+					console.log('document updated');
+				});
+			}
+		});
+	});
 
-
+	return "Merci pour votre retour !";
+}
 
 /*
  *	ICI CODE APPRENTISSAGE

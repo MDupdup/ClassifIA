@@ -23,9 +23,15 @@ io.sockets.on('connection', function (socket, pseudo) {
         socket.broadcast.emit('message', {pseudo: socket.pseudo, message: message});
     });
 
+
+    // Youtube
+    socket.on("youtube request", function(data) {
+        socket.broadcast.emit("youtube request", data);
+    });
+
     
     // MongoDB
-    const client = new MongoClient('mongodb://10.10.20.70:27017');
+    const client = new MongoClient('mongodb://10.10.20.80:27017');
 
     client.connect((err, client) => {
         if(err) throw err;
