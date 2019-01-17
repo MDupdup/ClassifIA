@@ -18,20 +18,22 @@ function openConnection(callback = undefined) {
 	});
 }
 
-exports.findInDB = function() {
+exports.findInDB = () => {
 	var dataIntent;
-    openConnection().then(client => {
-		client.connect((err, client) => {
-			if(err) throw err;
-			client.db(dbName).collection(collectionName).find({}).toArray((err, result) => {
-				dataIntent = { "intents": result };	
-				console.log(dataIntent);
-				return dataIntent;
-			});		
-		}).then(() => {
-			client.close();
+
+	return new Promise((res, rej) => {
+		openConnection().then(client => {
+			client.connect((err, client) => {
+				if(err) throw err;
+				client.db(dbName).collection(collectionName).find({}).toArray((err, result) => {
+					dataIntent = { "intents": result };
+					res(dataIntent);
+				});		
+			}).then(() => {
+				client.close();
+			});
 		});
-	});
+	})
 
         //return dataIntent;
         // Fonction d'apprentissage du réseau de neurones, à lancer uniquement pour rafraîchir
