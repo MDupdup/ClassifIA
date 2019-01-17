@@ -1,5 +1,6 @@
 const sanitize = require('mongo-sanitize');
 const MongoClient = require('mongodb').MongoClient;
+const ent = require('ent');
 
 let client;
 let url;
@@ -11,16 +12,26 @@ exports.setURL = function(uri) {
 }
 
 function openConnection(callback = undefined) {
-    
-    if(client === undefined) client = new MongoClient(url);
-    var coll = client.db(dbName).collection(collectionName);
-    return coll;
+	return new Promise((res, rej) => {
+		if(client === undefined) client = new MongoClient(url);
+		res(client);
+	});
 }
 
 exports.findInDB = function() {
-    return openConnection().find({}).toArray();
-        //if(err) throw err;
-        //dataIntent = { "intents": result };
+	var dataIntent;
+    openConnection().then(client => {
+		client.connect((err, client) => {
+			if(err) throw err;
+			client.db(dbName).collection(collectionName).find({}).toArray((err, result) => {
+				dataIntent = { "intents": result };	
+				console.log(dataIntent);
+				return dataIntent;
+			});		
+		}).then(() => {
+			client.close();
+		});
+	});
 
         //return dataIntent;
         // Fonction d'apprentissage du réseau de neurones, à lancer uniquement pour rafraîchir
@@ -29,7 +40,8 @@ exports.findInDB = function() {
     //});
 }
 
-exports.insertInDB = function(choice, message, isQuestion = false) {
+// Insérer des Réponses/Questions dans la base MongoDB de l'IA (sa "mémoire")
+exports.insertInDB = function(choice, message, dataIntent, isQuestion = false) {
 	client.connect((err, client) => {
 		if(err) throw err;
 		var db = client.db(dbName);
@@ -56,6 +68,5 @@ exports.insertInDB = function(choice, message, isQuestion = false) {
 			}
 		});
 	});
-
 	return "Merci pour votre retour !";
 }

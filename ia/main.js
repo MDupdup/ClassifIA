@@ -1,23 +1,24 @@
-var app = require('express')(),
-    server = require('http').createServer(app);
-
-var socket = require('socket.io-client')('http://10.10.20.80:8080');
+const app = require('express')();
+const server = require('http').createServer(app);
+const socket = require('socket.io-client')('http://10.10.20.80:8080');
 const fs = require('fs');
 const ent = require('ent');
 const sanitize = require('mongo-sanitize');
 const MongoClient = require('mongodb').MongoClient;
 
-var nbIn = 250;
-var nbHidden = 5;
-
-
 var	dataGestion = require('./neuralnetwork/dataGestion');
 var neuralNetwork = require('./neuralnetwork/neuralNetwork');
 var mongo = require('./mongo');
+var utils = require('./utils');
 
 
-
+var nbIn = 250;
+var nbHidden = 5;
 var dataIntent;
+
+mongo.setURL('mongodb://10.10.20.80:27017');
+
+//dataIntent = mongo.findInDB();
 
 const client = new MongoClient('mongodb://10.10.20.80:27017');
 
@@ -25,21 +26,9 @@ client.connect((err, client) => {
 	if(err) throw err;
 	const db = client.db("ia");
 	db.collection('data').find({}).toArray((err, result) => {
-		if(err) throw err;
-		dataIntent = {
-			"intents": result
-		};
-
-		// Fonction d'apprentissage du réseau de neurones, à lancer uniquement pour rafraîchir
-		// le réseau avec les données de la base nouvellement enregistrées
-		//apprentissage(dataIntent);
-	});
+		dataIntent = { "intents": result };	
+	});	
 });
-
-// http://snowball.tartarus.org/algorithms/french/stemmer.html
-// http://snowball.tartarus.org/algorithms/french/diffs.txt
-
-
 
 socket.emit('nouveau_client', "IA");
 
@@ -53,25 +42,25 @@ var myReseau = JSON.parse(fs.readFileSync(__dirname+'/neuralnetwork/rnPractice.j
 var lastMessage;
 
 socket.on('message', function(data) {
-
-	console.log("here");
 	var maRecherche = dataGestion.sentenceToArrayBit(myReseau.words, data.message, nbIn);
 
 	// Insérer le dernier message dans la base pour agrandir les connaissances de l'IA
-	if(!isNaN(data.message) && data.message > 0 && data.message < dataIntent["intents"].length) var message = insertIntoDB(data.message, lastMessage);
+	if(!isNaN(data.message) && data.message > 0 && data.message < dataIntent["intents"].length) var message = mongo.insertInDB(data.message, lastMessage, dataIntent);
+
 	// Insérer une nouvelle question dans la base
-	else if(!isNaN(data.message.split('')[0]) && data.message.split('')[1] === 'q')	var message = insertIntoDB(data.message, lastMessage, true);
+	else if(!isNaN(data.message.split('')[0]) && data.message.split('')[1] === 'q')	var message = mongo.insertInDB(data.message, lastMessage, dataIntent, true);
 	/*else if(data.message.split('^')[0] === 'y') {
 		socket.emit("youtube request", data.message.substring(1, data.message.length));
 		var message = "Bien sûr, voici la vidéo " + data.message.substring(1, data.message.length);
 	}*/
+
 	// Répondre à la question de l'utilisateur
 	else {
 		var message = neuralNetwork.response(myReseau.perceptron_after_learn, maRecherche, dataIntent);
 		lastMessage = data.message;
 	}
 
-	socket.emit('message', formatResponse(message, data));
+	socket.emit('message', utils.formatResponse(message, data));
 })
 
 console.log("ok");
@@ -79,64 +68,6 @@ server.listen(3000);
 
 
 
-
-
-// Ajouter des données personnalisées
-function formatResponse(originalMessage, data, escapeChar = '^') {
-	if(originalMessage.includes(escapeChar)) {
-		var code = originalMessage.split(escapeChar)[1];
-		var replaceValue = "";
-
-		switch(code) {
-			case "name":
-				replaceValue = data.pseudo;
-				break;
-			case "time":
-				var now = new Date();
-				var minutes = now.getMinutes() < 10 ? '0' + now.getMinutes() : now.getMinutes();
-				replaceValue = now.getHours() + ':' + minutes;
-				break;
-			case "day":
-				break;
-			default:
-				replaceValue = "??";
-		}
-		return originalMessage.replace(escapeChar+code+escapeChar, replaceValue);
-	}
-	return originalMessage;
-}
-
-// Insérer des Réponses/Questions dans la base MongoDB de l'IA (sa "mémoire")
-function insertIntoDB(choice, message, isQuestion = false) {
-	client.connect((err, client) => {
-		if(err) throw err;
-		var db = client.db('ia');
-		
-		var query = { "tag": dataIntent["intents"][parseInt(choice) - 1].tag };
-		query[isQuestion ? "responses" : "patterns"] = sanitize(ent.decode(message));
-
-		var insert = {};
-		insert[isQuestion ? "responses" : "patterns"] = sanitize(ent.decode(message));
-		
-		db.collection('data').findOne(query, (err, result) => {
-			if(err) throw err;
-			if(result === null) {
-				db.collection('data').updateOne(
-				{ 
-					"tag": dataIntent["intents"][parseInt(choice) - 1].tag 
-				},
-				{
-					"$push": insert
-				}, (err, result) => {
-					if(err) throw err;
-					console.log('document updated');
-				});
-			}
-		});
-	});
-
-	return "Merci pour votre retour !";
-}
 
 /*
  *	ICI CODE APPRENTISSAGE
@@ -161,7 +92,7 @@ function apprentissage(data) {
 			
 			
 			console.log("after data to 01");
-			// nb de output = au nobre de tag
+			// nb de output = au nombre de tag
 			var reseau = neuralNetwork.perceptron(nbIn, nbHidden, dataTransform[1].length);
 			
 			console.log("after reseau");
