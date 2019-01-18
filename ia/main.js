@@ -15,9 +15,8 @@ var dataIntent;
 
 mongo.setURL('mongodb://10.10.20.80:27017');
 
-mongo.findInDB().then(res => {
-	console.log(res);
-	dataIntent = res;
+mongo.findInDB("data").then(res => {
+	dataIntent = { "intents": res };
 });
 
 socket.emit('nouveau_client', "IA");
@@ -25,26 +24,28 @@ socket.emit('nouveau_client', "IA");
 // Essai d'update du réseau de neurones en dynamique (appui sur bouton "Réfléchir")
 socket.on('updateNN', function (update) {
 	if(update) {
-		mongo.findInDB().then(res => {
-			apprentissage(res);
-			myNetwork = JSON.parse(fs.readFileSync(__dirname + '/neuralnetwork/rnPractice.json', 'utf8'));
+		mongo.findInDB("data").then(res => {
+			apprentissage({ "intents": res });
 		});
 	}
 });
 
 var lastMessage;
 
-var myNetwork = JSON.parse(fs.readFileSync(__dirname + '/neuralnetwork/rnPractice.json', 'utf8'));
+//var myNetwork = JSON.parse(fs.readFileSync(__dirname + '/neuralnetwork/rnPractice.json', 'utf8'));
 
+mongo.findInDB("config").then(res => {
+	myNetwork = res[0];
+});
 
 socket.on('message', function(data) {
 	var mySearch = dataGestion.sentenceToArrayBit(myNetwork.words, data.message, nbIn);
 
 	// Insérer le dernier message dans la base pour agrandir les connaissances de l'IA
-	if(!isNaN(data.message) && data.message > 0 && data.message < dataIntent["intents"].length) var message = mongo.insertInDB(data.message, lastMessage, dataIntent);
+	if(!isNaN(data.message) && data.message > 0 && data.message < dataIntent["intents"].length) var message = mongo.fillDB(data.message, lastMessage, dataIntent);
 
 	// Insérer une nouvelle question dans la base
-	else if(!isNaN(data.message.split('')[0]) && data.message.split('')[1] === 'q')	var message = mongo.insertInDB(data.message, lastMessage, dataIntent, true);
+	else if(!isNaN(data.message.split('')[0]) && data.message.split('')[1] === 'q')	var message = mongo.fillDB(data.message, lastMessage, dataIntent, true);
 
 	// Répondre à la question de l'utilisateur
 	else {
@@ -76,12 +77,13 @@ function apprentissage(data) {
 	};
 	
 	console.log("Writing neural network config to file...");
-	fs.writeFile(__dirname + "/neuralnetwork/rnPractice.json", JSON.stringify(jsonAfterAdd), function(err) {
+	mongo.updateNNConfig(jsonAfterAdd);
+	/*fs.writeFile(__dirname + "/neuralnetwork/rnPractice.json", JSON.stringify(jsonAfterAdd), function(err) {
 		if(err) {
 			return console.log(err);
 		}
 		console.log("The file was saved!");
-	});
+	});*/
 }
 
 /*

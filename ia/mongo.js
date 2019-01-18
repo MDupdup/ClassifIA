@@ -1,6 +1,7 @@
 const sanitize = require('mongo-sanitize');
 const MongoClient = require('mongodb').MongoClient;
 const ent = require('ent');
+var ObjectID = require('mongodb').ObjectID;
 
 let client;
 let url;
@@ -18,24 +19,37 @@ function openConnection() {
 	}).catch(e => console.error(e));
 }
 
-exports.findInDB = () => {
+exports.findInDB = (collection) => {
 	return new Promise((res, rej) => {
 		openConnection().then(client => {
 			client.connect((err, client) => {
 				if(err) throw err;
-				client.db(dbName).collection(collectionName).find({}).toArray((err, result) => {
-					dataIntent = { "intents": result };
-					res(dataIntent);
+				client.db(dbName).collection(collection).find({}).toArray((err, result) => {
+					res(result);
 				});
 			});
+		}).catch(e => {
+			rej(e);
 		});
-	}).catch(e => {
-		rej(e);
+	});
+}
+
+
+exports.updateNNConfig = (data, collection = "config") => {
+	openConnection().then(client => {
+		client.connect((err, client) => {
+			if(err) throw err;
+			client.db(dbName).collection(collection).findOneAndUpdate({ "_id": ObjectID("5c419032ae5f3055b58d9918") }, {data}, 
+			(err, res) => {
+				if(err) throw err;
+				console.log('Brain data updated');
+			});
+		});
 	});
 }
 
 // Insérer des Réponses/Questions dans la base MongoDB de l'IA (sa "mémoire")
-exports.insertInDB = (choice, message, dataIntent, isQuestion = false) => {
+exports.fillDB = (choice, message, dataIntent, isQuestion = false) => {
 	client.connect((err, client) => {
 		if(err) throw err;
 		var db = client.db(dbName);
