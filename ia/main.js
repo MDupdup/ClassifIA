@@ -2,9 +2,6 @@ const app = require('express')();
 const server = require('http').createServer(app);
 const socket = require('socket.io-client')('http://10.10.20.80:8080');
 const fs = require('fs');
-const ent = require('ent');
-const sanitize = require('mongo-sanitize');
-const MongoClient = require('mongodb').MongoClient;
 
 var	dataGestion = require('./neuralnetwork/dataGestion');
 var neuralNetwork = require('./neuralnetwork/neuralNetwork');
@@ -45,10 +42,6 @@ socket.on('message', function(data) {
 
 	// Insérer une nouvelle question dans la base
 	else if(!isNaN(data.message.split('')[0]) && data.message.split('')[1] === 'q')	var message = mongo.insertInDB(data.message, lastMessage, dataIntent, true);
-	/*else if(data.message.split('^')[0] === 'y') {
-		socket.emit("youtube request", data.message.substring(1, data.message.length));
-		var message = "Bien sûr, voici la vidéo " + data.message.substring(1, data.message.length);
-	}*/
 
 	// Répondre à la question de l'utilisateur
 	else {
@@ -57,12 +50,10 @@ socket.on('message', function(data) {
 	}
 
 	socket.emit('message', utils.formatResponse(message, data));
-})
+});
 
 console.log("Server listening.");
 server.listen(3000);
-
-
 
 
 /*
@@ -70,7 +61,7 @@ server.listen(3000);
  */
 function apprentissage(data) {	
 	var dataTransform = dataGestion.prepareData(data);
-	var dataTo01 = dataGestion.prepareTraining(dataTransform[0], dataTransform[1], dataTransform[2], nbIn)
+	var dataTo01 = dataGestion.prepareTraining(dataTransform[0], dataTransform[1], dataTransform[2], nbIn);
 	
 	// nb de output = au nombre de tag
 	var reseau = neuralNetwork.perceptron(nbIn, nbHidden, dataTransform[1].length);
