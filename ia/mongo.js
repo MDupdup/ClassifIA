@@ -7,11 +7,11 @@ let url;
 const dbName = 'ia';
 const collectionName = 'data';
 
-exports.setURL = function(uri) {
+exports.setURL = (uri) => {
     url = uri;
 }
 
-function openConnection(callback = undefined) {
+function openConnection() {
 	return new Promise((res, rej) => {
 		if(client === undefined) client = new MongoClient(url);
 		res(client);
@@ -19,8 +19,6 @@ function openConnection(callback = undefined) {
 }
 
 exports.findInDB = () => {
-	var dataIntent;
-
 	return new Promise((res, rej) => {
 		openConnection().then(client => {
 			client.connect((err, client) => {
@@ -28,22 +26,18 @@ exports.findInDB = () => {
 				client.db(dbName).collection(collectionName).find({}).toArray((err, result) => {
 					dataIntent = { "intents": result };
 					res(dataIntent);
-				});		
-			}).then(() => {
-				client.close();
+				});
+			}).catch(e => {
+				rej(e);
 			});
 		});
-	})
-
-        //return dataIntent;
-        // Fonction d'apprentissage du réseau de neurones, à lancer uniquement pour rafraîchir
-        // le réseau avec les données de la base nouvellement enregistrées
-        //apprentissage(dataIntent);
-    //});
+	}).catch(e => {
+		rej(e);
+	});
 }
 
 // Insérer des Réponses/Questions dans la base MongoDB de l'IA (sa "mémoire")
-exports.insertInDB = function(choice, message, dataIntent, isQuestion = false) {
+exports.insertInDB = (choice, message, dataIntent, isQuestion = false) => {
 	client.connect((err, client) => {
 		if(err) throw err;
 		var db = client.db(dbName);
