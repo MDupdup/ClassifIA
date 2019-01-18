@@ -59,7 +59,7 @@ socket.on('message', function(data) {
 	socket.emit('message', utils.formatResponse(message, data));
 })
 
-console.log("ok");
+console.log("Server listening.");
 server.listen(3000);
 
 
@@ -69,31 +69,20 @@ server.listen(3000);
  *	ICI CODE APPRENTISSAGE
  */
 function apprentissage(data) {	
-	console.log("after get data");
 	var dataTransform = dataGestion.prepareData(data);
-	//console.log(dataTransform);
-	console.log("after data transform");
-	
 	var dataTo01 = dataGestion.prepareTraining(dataTransform[0], dataTransform[1], dataTransform[2], nbIn)
-	//console.log(dataTo01)
 	
-	
-	console.log("after data to 01");
 	// nb de output = au nombre de tag
 	var reseau = neuralNetwork.perceptron(nbIn, nbHidden, dataTransform[1].length);
-	
-	console.log("after reseau");
 	var jsonLearn = neuralNetwork.learn(dataTo01[0], dataTo01[1], reseau, 0.2);
-
-	console.log("after learn");
-	
 	var jsonAfterAdd = {
 		"classes": dataTransform[1],
 		"words": dataTransform[0],
 		"perceptron_after_learn": jsonLearn
 	};
 	
-	fs.writeFile(cheminVersProjet+"rnPractice.json", JSON.stringify(jsonAfterAdd), function(err) {
+	console.log("Writing neural network config to file...");
+	fs.writeFile(__dirname + "/neuralnetwork/rnPractice.json", JSON.stringify(jsonAfterAdd), function(err) {
 		if(err) {
 			return console.log(err);
 		}

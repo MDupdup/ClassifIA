@@ -15,7 +15,7 @@ function openConnection() {
 	return new Promise((res, rej) => {
 		if(client === undefined) client = new MongoClient(url);
 		res(client);
-	});
+	}).catch(e => console.error(e));
 }
 
 exports.findInDB = () => {
@@ -27,8 +27,6 @@ exports.findInDB = () => {
 					dataIntent = { "intents": result };
 					res(dataIntent);
 				});
-			}).catch(e => {
-				rej(e);
 			});
 		});
 	}).catch(e => {
