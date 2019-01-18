@@ -27,14 +27,17 @@ socket.on('updateNN', function (update) {
 	if(update) {
 		mongo.findInDB().then(res => {
 			apprentissage(res);
+			myNetwork = JSON.parse(fs.readFileSync(__dirname + '/neuralnetwork/rnPractice.json', 'utf8'));
 		});
 	}
 });
 
 var lastMessage;
 
+var myNetwork = JSON.parse(fs.readFileSync(__dirname + '/neuralnetwork/rnPractice.json', 'utf8'));
+
+
 socket.on('message', function(data) {
-	var myNetwork = JSON.parse(fs.readFileSync(__dirname + '/neuralnetwork/rnPractice.json', 'utf8'));
 	var mySearch = dataGestion.sentenceToArrayBit(myNetwork.words, data.message, nbIn);
 
 	// Insérer le dernier message dans la base pour agrandir les connaissances de l'IA
